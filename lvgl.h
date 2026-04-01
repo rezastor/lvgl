@@ -66,6 +66,7 @@ extern "C" {
 #include "src/widgets/canvas/lv_canvas.h"
 #include "src/widgets/chart/lv_chart.h"
 #include "src/widgets/checkbox/lv_checkbox.h"
+#include "src/widgets/curve/lv_curve.h"
 #include "src/widgets/dropdown/lv_dropdown.h"
 #include "src/widgets/gif/lv_gif.h"
 #include "src/widgets/image/lv_image.h"
