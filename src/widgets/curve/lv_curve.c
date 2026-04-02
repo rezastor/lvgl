@@ -36,9 +36,9 @@ static void lv_curve_destructor(const lv_obj_class_t * class_p, lv_obj_t * obj);
 static void lv_curve_event(const lv_obj_class_t * class_p, lv_event_t * e);
 
 static void draw_series_line(lv_obj_t * obj, lv_layer_t * layer);
-static uint32_t get_index_from_x(lv_obj_t * obj, int32_t x);
+//static uint32_t get_index_from_x(lv_obj_t * obj, int32_t x);
 static void invalidate_points(lv_obj_t* obj);
-static void invalidate_point(lv_obj_t * obj, uint32_t i);
+//static void invalidate_point(lv_obj_t * obj, uint32_t i);
 static void new_points_alloc(lv_obj_t * obj, uint32_t cnt, int32_t ** a);
 static int32_t value_to_y(lv_obj_t * obj, int32_t v, int32_t h);
 
@@ -166,10 +166,9 @@ static void lv_curve_constructor(const lv_obj_class_t * class_p, lv_obj_t * obj)
     curve->y_points = lv_malloc(sizeof(int32_t) * curve->point_cnt);
     LV_ASSERT_MALLOC(curve->y_points);
 
-    int32_t i;
     const int32_t def = LV_CURVE_POINT_NONE;
     int32_t * p_tmp = curve->y_points;
-    for(i = 0; i < curve->point_cnt; i++) {
+    for(uint32_t i = 0; i < curve->point_cnt; i++) {
         *p_tmp = def;
         p_tmp++;
     }
@@ -201,7 +200,6 @@ static void lv_curve_event(const lv_obj_class_t * class_p, lv_event_t * e)
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * obj = lv_event_get_current_target(e);
 
-    lv_curve_t * curve  = (lv_curve_t *)obj;
     if(code == LV_EVENT_DRAW_MAIN) {
         lv_layer_t * layer = lv_event_get_layer(e);
 
@@ -230,9 +228,8 @@ static void draw_series_line(lv_obj_t * obj, lv_layer_t * layer)
     int32_t pad_top = lv_obj_get_style_pad_top(obj, LV_PART_MAIN) + border_width;
     int32_t w     = lv_obj_get_content_width(obj);
     int32_t h     = lv_obj_get_content_height(obj);
-    int32_t x_ofs = obj->coords.x1 + pad_left - lv_obj_get_scroll_left(obj);
-    int32_t y_ofs = obj->coords.y1 + pad_top - lv_obj_get_scroll_top(obj);
-    lv_curve_series_t * ser;
+    int32_t x_ofs = obj->coords.x1 + pad_left;
+    int32_t y_ofs = obj->coords.y1 + pad_top;
 
     lv_draw_line_dsc_t line_dsc;
     lv_draw_line_dsc_init(&line_dsc);
@@ -240,24 +237,45 @@ static void draw_series_line(lv_obj_t * obj, lv_layer_t * layer)
     lv_obj_init_draw_line_dsc(obj, LV_PART_MAIN, &line_dsc);
 
     /*If there are at least as many points as pixels then draw only vertical lines*/
-    bool crowded_mode = (int32_t)curve->point_cnt >= w;
+    //bool crowded_mode = (int32_t)curve->point_cnt >= w;
 
-    int32_t bullet_w = lv_obj_get_style_width(obj, LV_PART_INDICATOR) / 2;
-    int32_t bullet_h = lv_obj_get_style_height(obj, LV_PART_INDICATOR) / 2;
-    int32_t extra_space_x;
-    if(curve->point_cnt <= 1) extra_space_x = 0;
-    else extra_space_x = w  / (curve->point_cnt - 1) + bullet_w + line_dsc.width;
+    
+    uint32_t x_step = w / curve->point_cnt;
+    uint16_t start = (layer->_clip_area.x1 - x_ofs) / x_step;
+    uint16_t end = (layer->_clip_area.x2 - x_ofs) / x_step;
+    end = LV_MIN(end, curve->point_cnt - 1);
+    
+    uint16_t i = start;
+    while(i <= end){
+        lv_value_precise_t p_x = x_ofs + i * x_step;
+        lv_point_precise_t points[25];
+        line_dsc.points = points;
+        line_dsc.point_cnt = 0;
 
-    lv_draw_rect_dsc_t point_draw_dsc;
-    if(crowded_mode == false) {
-        lv_draw_rect_dsc_init(&point_draw_dsc);
-        lv_obj_init_draw_rect_dsc(obj, LV_PART_INDICATOR, &point_draw_dsc);
-        point_draw_dsc.base.id1 = line_dsc.base.id1;
+        uint16_t lim = LV_MIN(i + 25, end);
+        for(; i <= lim; i++){
+            lv_value_precise_t p_y;
+            if(curve->y_points[i] == LV_CURVE_POINT_NONE) {
+                p_y = LV_DRAW_LINE_POINT_NONE;
+            }
+            else {
+                int32_t v = curve->y_points[i];
+                p_y = y_ofs + value_to_y(obj, v, h);
+            }
+
+            points[line_dsc.point_cnt].x = p_x;
+            points[line_dsc.point_cnt].y = p_y;
+            line_dsc.point_cnt++;
+            p_x += x_step;
+        }
+        lv_draw_line(layer, &line_dsc);
     }
 
-    lv_point_precise_t * points = NULL;
-    if(crowded_mode) {
-        points = lv_malloc((w + 2 * extra_space_x) * 3 * sizeof(lv_point_precise_t));
+    
+
+    //lv_point_precise_t * points = NULL;
+    /*if(crowded_mode) {
+        points = lv_malloc((w) * 3 * sizeof(lv_point_precise_t));
     }
     else {
         points = lv_malloc(curve->point_cnt * sizeof(lv_point_precise_t));
@@ -270,14 +288,7 @@ static void draw_series_line(lv_obj_t * obj, lv_layer_t * layer)
 
     line_dsc.points = points;
 
-    /*Go through all data lines*/
-    
-    //line_dsc.color = ser->color;
-    //line_dsc.base.drop_shadow_color = ser->color;
-
-    int32_t start_point = 0;
-    int32_t p_act = start_point;
-    int32_t p_prev = start_point;
+    //Go through all data lines
 
     lv_value_precise_t y_min = obj->coords.y2;
     lv_value_precise_t y_max = obj->coords.y1;
@@ -286,11 +297,33 @@ static void draw_series_line(lv_obj_t * obj, lv_layer_t * layer)
     line_dsc.p2.x = x_ofs;
     line_dsc.point_cnt = 0;
 
+    uint32_t x_step = w / curve->point_cnt;
+    uint16_t start = (layer->_clip_area.x1 - x_ofs) / x_step;
+    uint16_t end = (layer->_clip_area.x2 - x_ofs) / x_step;
+    end = LV_MIN(end, curve->point_cnt - 1);
+    lv_value_precise_t p_x = x_ofs + start * x_step;
+    for(uint32_t i = start; i <= end; i++){
+        lv_value_precise_t p_y;
+        if(curve->y_points[i] == LV_CURVE_POINT_NONE) {
+            p_y = LV_DRAW_LINE_POINT_NONE;
+        }
+        else {
+            int32_t v = curve->y_points[i];
+            p_y = y_ofs + value_to_y(obj, v, h);
+        }
+
+        points[line_dsc.point_cnt].x = p_x;
+        points[line_dsc.point_cnt].y = p_y;
+        line_dsc.point_cnt++;
+        p_x += x_step;
+    }
+
+
     uint32_t i;
     for(i = 0; i < curve->point_cnt; i++) {
         lv_value_precise_t p_x = (int32_t)((w * i) / (curve->point_cnt - 1)) + x_ofs;
-        if(p_x > layer->_clip_area.x2 + extra_space_x + 1) break;
-        if(p_x < layer->_clip_area.x1 - extra_space_x - 1) {
+        if(p_x > layer->_clip_area.x2 + 1) break;
+        if(p_x < layer->_clip_area.x1 - 1) {
             p_prev = p_act;
             continue;
         }
@@ -302,21 +335,19 @@ static void draw_series_line(lv_obj_t * obj, lv_layer_t * layer)
         }
         else {
             int32_t v = curve->y_points[p_act];
-            int32_t min_v = 0;
-            int32_t max_v = h;
-            p_y = (int32_t)lv_map(v, min_v, max_v, y_ofs + h, y_ofs);
+            p_y = value_to_y(obj, v, h);
         }
 
-        /*In normal mode just collect the points here*/
+        //In normal mode just collect the points here
         if(crowded_mode == false) {
             points[line_dsc.point_cnt].x = p_x;
             points[line_dsc.point_cnt].y = p_y;
             line_dsc.point_cnt++;
         }
-        /*In crowded mode draw vertical lines from the min/max on the same X coordinate*/
+        //In crowded mode draw vertical lines from the min/max on the same X coordinate
         else {
             if(curve->y_points[p_prev] != LV_CURVE_POINT_NONE && curve->y_points[p_act] != LV_CURVE_POINT_NONE) {
-                /*Draw only one vertical line between the min and max y-values on the same x-value*/
+                //Draw only one vertical line between the min and max y-values on the same x-value
                 y_max = LV_MAX(y_max, p_y);
                 y_min = LV_MIN(y_min, p_y);
                 if(x_prev != p_x) {
@@ -327,11 +358,11 @@ static void draw_series_line(lv_obj_t * obj, lv_layer_t * layer)
                     line_dsc.points[line_dsc.point_cnt + 2].y = LV_DRAW_LINE_POINT_NONE;
                     line_dsc.points[line_dsc.point_cnt + 2].x = p_x;
 
-                    /*If they are the same no line would be drawn*/
+                    //If they are the same no line would be drawn
                     if(line_dsc.points[line_dsc.point_cnt].y == line_dsc.points[line_dsc.point_cnt + 1].y) {
                         line_dsc.points[line_dsc.point_cnt + 1].y++;
                     }
-                    y_min = p_y;  /*Start the line of the next x from the current last y*/
+                    y_min = p_y;  //Start the line of the next x from the current last y
                     y_max = p_y;
                     x_prev = p_x;
                     line_dsc.point_cnt += 3;
@@ -342,30 +373,13 @@ static void draw_series_line(lv_obj_t * obj, lv_layer_t * layer)
         p_prev = p_act;
     }
 
-    /*Draw the line from the accumulated points*/
+    //Draw the line from the accumulated points
     lv_draw_line(layer, &line_dsc);
 
-    if(points) lv_free(points);
+    if(points) lv_free(points);*/
 }
 
-/**
- * Get the nearest index to an X coordinate
- * @param curve pointer to a curve object
- * @param coord the coordination of the point relative to the series area.
- * @return the found index
- */
-static uint32_t get_index_from_x(lv_obj_t * obj, int32_t x)
-{
-    lv_curve_t * curve  = (lv_curve_t *)obj;
-    int32_t w = lv_obj_get_content_width(obj);
-    int32_t pad_left = lv_obj_get_style_pad_left(obj, LV_PART_MAIN);
-    x -= pad_left;
-
-    if(x < 0) return 0;
-    if(x > w) return curve->point_cnt - 1;
-    return (x * (curve->point_cnt - 1) + w / 2) / w;
-}
-
+/*
 static void invalidate_point(lv_obj_t * obj, uint32_t i)
 {
     lv_curve_t * curve  = (lv_curve_t *)obj;
@@ -384,7 +398,7 @@ static void invalidate_point(lv_obj_t * obj, uint32_t i)
     coords.y1 -= line_width;
     coords.y2 += line_width;
 
-    /*Invalidate the area between the previous and the next points*/
+    //Invalidate the area between the previous and the next points
     if(i == curve->point_cnt - 1) {
         coords.x1 = (i - 1) * x_step + x_ofs - line_width;
         coords.x2 = i * x_step + x_ofs - line_width;
@@ -398,7 +412,7 @@ static void invalidate_point(lv_obj_t * obj, uint32_t i)
         coords.x2 = (i + 1) * x_step + x_ofs - line_width;
     }
     lv_obj_invalidate_area(obj, &coords);
-}
+}*/
 
 static void invalidate_points(lv_obj_t * obj)
 {
@@ -484,9 +498,13 @@ static void new_points_alloc(lv_obj_t * obj, uint32_t cnt, int32_t ** a)
  */
 static int32_t value_to_y(lv_obj_t * obj,int32_t v, int32_t h)
 {
-    lv_curve_t * curve = (lv_curve_t *) obj;
+    LV_UNUSED(obj);
+    if(v < 0)
+        v = 0;
+    else if(v > h)
+        v = h;
 
-    return lv_map(v, 0, h, 0, h);
+    return h - v;
 }
 
 #endif
