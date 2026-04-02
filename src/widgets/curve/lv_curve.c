@@ -34,8 +34,7 @@ static void lv_curve_size_event_cb(lv_event_t * e);
 static void lv_curve_pos_to_area(lv_obj_t* obj, int32_t pos, lv_area_t* area);
 static void lv_curve_area_to_pos(lv_obj_t* obj, const lv_area_t* area, int32_t* start, int32_t* end);
 static void invalidate_point(lv_obj_t * obj, uint32_t i);
-
-static void lv_curve_timer_cb(lv_timer_t* timer);
+static void invalidate_points(lv_obj_t* obj);
 
 /**********************
  *  STATIC VARIABLES
@@ -115,6 +114,7 @@ void lv_curve_set_decim(lv_obj_t* obj, uint16_t decim)
     if(curve->current >= new_point_num) {
         curve->current = 0;
         curve->full = 0;
+        curve->point_wait_current = 0;
     }
     
     curve->point_num = new_point_num;
@@ -130,35 +130,18 @@ void lv_curve_add_point(lv_obj_t* obj, uint16_t y_point)
     if(curve->point_array == NULL || curve->point_num == 0) return;
 
     curve->point_array[curve->current] = y_point;
-    invalidate_point(obj, curve->current);
+    curve->point_wait_current++;
+
     curve->current++;
-    if(curve->current >= curve->point_num){
+    if(curve->current >= curve->point_num - 1){
         curve->current = 0;
         curve->full = 1;
+        invalidate_points(obj);
     }
-    
-    /*int32_t height = lv_obj_get_height(obj);
-    
-    // Ограничиваем значение высотой виджета
-    if(y_point > height) y_point = height;
+    else if(curve->point_wait_current >= curve->point_wait_count){
+        invalidate_points(obj);
+    }
 
-    uint16_t pos = curve->current;
-    curve->point_array[curve->current] = y_point;
-    curve->current++;
-    if(curve->current >= curve->point_num){
-        curve->current = 0;
-        curve->full = 1;
-    }
-    uint16_t size = lv_curve_get_point_count(obj);
-    if(size <= 1){
-        return;
-    }
-    lv_area_t invalid_area;
-    lv_curve_pos_to_area(obj, pos, &invalid_area);
-
-    // Запрашиваем перерисовку
-    //lv_obj_send_event(obj, LV_EVENT_INVALIDATE_AREA, &invalid_area);
-    lv_obj_invalidate_area(obj, &invalid_area);*/
 }
 
 void lv_curve_clear(lv_obj_t* obj)
@@ -174,6 +157,7 @@ void lv_curve_clear(lv_obj_t* obj)
     /* Сбрасываем указатель */
     curve->current = 0;
     curve->full = 0;
+    curve->point_wait_current = 0;
     
     /* Полностью перерисовываем виджет */
     lv_obj_invalidate(obj);
@@ -226,21 +210,54 @@ static void lv_curve_constructor(const lv_obj_class_t * class_p, lv_obj_t * obj)
     curve->x_step      = 1;      /* По умолчанию 1 пиксель на точку */
     curve->current     = 0;
     curve->full        = 0;
-    curve->timer = lv_timer_create(lv_curve_timer_cb, 30, curve);
+    curve->point_wait_count = 5;
+    curve->point_wait_current = 0;
 
-    
-    /* Создаем буфер после того, как размер виджета станет известен */
-    /* Для этого используем событие LV_EVENT_SIZE_CHANGED */
-    
     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
-    
-    /* Добавляем обработчик изменения размера */
     lv_obj_add_event_cb(obj, lv_curve_size_event_cb, LV_EVENT_SIZE_CHANGED, NULL);
-    //lv_obj_add_event_cb(obj, lv_curve_event, LV_EVENT_DRAW_MAIN, NULL);
-
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
 
     LV_TRACE_OBJ_CREATE("finished");
+}
+
+static void invalidate_points(lv_obj_t* obj){
+    lv_curve_t * curve  = (lv_curve_t *)obj;
+    uint16_t s = lv_curve_get_point_count(obj);
+    if(s <= 1){
+        return;
+    }
+    int32_t x_ofs = obj->coords.x1;
+    lv_area_t coords;
+    lv_area_copy(&coords, &obj->coords);
+
+    int32_t end;
+    int32_t start;
+    
+    if(curve->current == 0)
+        end = curve->point_num - 1;
+    else
+        end = curve->current - 1;
+   
+    start = end - curve->point_wait_current;
+
+    if(start == 0){
+        coords.x1 = 0;
+    }
+    else{
+        coords.x1 = (start - 1) * curve->x_step;
+    }
+
+    if(end == s - 1){
+        coords.x2 = end * curve->x_step + 1;
+    }
+    else{
+        coords.x2 = (end + 1) * curve->x_step + 1;
+    }
+
+    coords.x1 += x_ofs;
+    coords.x2 += x_ofs;
+    curve->point_wait_current = 0;
+    lv_obj_invalidate_area(obj, &coords);
 }
 
 static void lv_curve_size_event_cb(lv_event_t * e)
@@ -322,7 +339,7 @@ static void lv_curve_event(const lv_obj_class_t * class_p, lv_event_t * e)
         p->y = height;
     }
     else if(code == LV_EVENT_DRAW_MAIN) {
-     /*   
+        
         lv_curve_t * curve = (lv_curve_t *)obj;
         lv_layer_t * layer = lv_event_get_layer(e);
         
@@ -357,7 +374,7 @@ static void lv_curve_event(const lv_obj_class_t * class_p, lv_event_t * e)
         }
         lv_draw_line(layer, &line_dsc);
         lv_free(points);
-        */
+        
     }
 }
 
@@ -369,21 +386,13 @@ static void invalidate_point(lv_obj_t * obj, uint32_t i)
         return;
     }
 
-    //int32_t w  = lv_obj_get_content_width(obj);
-    //int32_t scroll_left = lv_obj_get_scroll_left(obj);
-    //int32_t bwidth = lv_obj_get_style_border_width(obj, LV_PART_MAIN);
-    //int32_t pleft = lv_obj_get_style_pad_left(obj, LV_PART_MAIN);
-    int32_t x_ofs = obj->coords.x1 /*+ pleft + bwidth - scroll_left*/;
+    int32_t x_ofs = obj->coords.x1;
 
-    //int32_t line_width = lv_obj_get_style_line_width(obj, LV_PART_ITEMS);
-    //int32_t point_w = lv_obj_get_style_width(obj, LV_PART_INDICATOR);
 
     lv_area_t coords;
     lv_area_copy(&coords, &obj->coords);
-    //coords.y1 -= line_width + point_w;
-    //coords.y2 += line_width + point_w;
 
-    /*Invalidate the area between the previous and the next points*/
+   
     if(i >= s - 1){
         coords.x1 = (i - 1) * curve->x_step;
         coords.x2 = i * curve->x_step + 1;
@@ -399,18 +408,6 @@ static void invalidate_point(lv_obj_t * obj, uint32_t i)
     coords.x1 += x_ofs;
     coords.x2 += x_ofs;
     lv_obj_invalidate_area(obj, &coords);
-
-    /*if(i < chart->point_cnt - 1) {
-        coords.x1 = ((w * i) / (chart->point_cnt - 1)) + x_ofs - line_width - point_w;
-        coords.x2 = ((w * (i + 1)) / (chart->point_cnt - 1)) + x_ofs + line_width + point_w;
-        lv_obj_invalidate_area(obj, &coords);
-    }
-
-    if(i > 0) {
-        coords.x1 = ((w * (i - 1)) / (chart->point_cnt - 1)) + x_ofs - line_width - point_w;
-        coords.x2 = ((w * i) / (chart->point_cnt - 1)) + x_ofs + line_width + point_w;
-        lv_obj_invalidate_area(obj, &coords);
-    }*/
 }
 
 static void lv_curve_pos_to_area(lv_obj_t* obj, int32_t pos, lv_area_t* area){

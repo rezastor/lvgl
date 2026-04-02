@@ -35,7 +35,8 @@ struct _lv_curve_t {
     uint32_t x_step;                    /**< Step between points in x axis*/
     uint32_t current;
     uint32_t full : 1;
-    lv_timer_t* timer;
+    uint32_t point_wait_count;
+    uint32_t point_wait_current;
 };
 
 
