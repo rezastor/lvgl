@@ -72,6 +72,8 @@ uint32_t lv_curve_get_point_count(const lv_obj_t * obj);
  */
 uint32_t lv_curve_get_x_start_point(const lv_obj_t * obj, lv_curve_series_t * ser);
 
+void lv_curve_set_batch_count(lv_obj_t * obj, uint32_t cnt);
+
 /**
  * Get the position of a point to the curve.
  * @param obj       pointer to a curve object
