@@ -87,63 +87,6 @@ void lv_curve_get_point_pos_by_id(lv_obj_t * obj, lv_curve_series_t * ser, uint3
  */
 void lv_curve_refresh(lv_obj_t * obj);
 
-/*======================
- * Series
- *=====================*/
-
-/**
- * Allocate and add a data series to the curve
- * @param obj       pointer to a curve object
- * @param color     color of the data series
- * @param axis      the y axis to which the series should be attached (::LV_CURVE_AXIS_PRIMARY_Y or ::LV_CURVE_AXIS_SECONDARY_Y)
- * @return          pointer to the allocated data series or NULL on failure
- */
-lv_curve_series_t * lv_curve_add_series(lv_obj_t * obj, lv_color_t color);
-
-/**
- * Deallocate and remove a data series from a curve
- * @param obj       pointer to a curve object
- * @param series    pointer to a data series on 'curve'
- */
-void lv_curve_remove_series(lv_obj_t * obj);
-
-/**
- * Change the color of a series
- * @param curve     pointer to a curve object.
- * @param series    pointer to a series object
- * @param color     the new color of the series
- */
-void lv_curve_set_series_color(lv_obj_t * curve, lv_color_t color);
-
-/**
- * Get the color of a series
- * @param curve     pointer to a curve object.
- * @param series    pointer to a series object
- * @return          the color of the series
- */
-lv_color_t lv_curve_get_series_color(lv_obj_t * curve);
-
-/**
- * Set the index of the x-axis start point in the data array.
- * This point will be considers the first (left) point and the other points will be drawn after it.
- * @param obj       pointer to a curve object
- * @param ser       pointer to a data series on 'curve'
- * @param id        the index of the x point in the data array
- */
-void lv_curve_set_x_start_point(lv_obj_t * obj, uint32_t id);
-
-/*=====================
- * Set/Get value(s)
- *====================*/
-
-/**
- * Initialize all data points of a series with a value
- * @param obj       pointer to curve object
- * @param ser       pointer to a data series on 'curve'
- * @param value     the new value for all points. `LV_CURVE_POINT_NONE` can be used to hide the points.
- */
-void lv_curve_set_all_values(lv_obj_t * obj, int32_t value);
-
 /**
  * Set the next point's Y value according to the update mode policy.
  * @param obj       pointer to curve object
@@ -159,32 +102,7 @@ void lv_curve_set_next_value(lv_obj_t * obj, int32_t value);
  * @param values        the new values to set
  * @param values_cnt    number of items in `values`
  */
-void lv_curve_set_series_values(lv_obj_t * obj, const int32_t values[], size_t values_cnt);
-
-/**
- * Set an individual point's y value of a curve's series directly based on its index
- * @param obj     pointer to a curve object
- * @param ser     pointer to a data series on 'curve'
- * @param id      the index of the x point in the array
- * @param value   value to assign to array point
- */
-void lv_curve_set_series_value_by_id(lv_obj_t * obj, uint32_t id, int32_t value);
-
-/**
- * Get the array of y values of a series
- * @param obj   pointer to a curve object
- * @param ser   pointer to a data series on 'curve'
- * @return      the array of values with 'point_count' elements
- */
-int32_t * lv_curve_get_series_y_array(const lv_obj_t * obj);
-
-/**
- * Get the array of x values of a series
- * @param obj   pointer to a curve object
- * @param ser   pointer to a data series on 'curve'
- * @return      the array of values with 'point_count' elements
- */
-int32_t * lv_curve_get_series_x_array(const lv_obj_t * obj);
+void lv_curve_set_next_values(lv_obj_t * obj, const int32_t values[], size_t values_cnt);
 
 /**********************
  *      MACROS

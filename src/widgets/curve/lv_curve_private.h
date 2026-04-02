@@ -27,21 +27,14 @@ extern "C" {
  *      TYPEDEFS
  **********************/
 
-/**
- * Descriptor a curve series
- */
-struct _lv_curve_series_t{
-    int32_t * x_points;
-    int32_t * y_points;
-    lv_color_t color;
-    uint32_t start_point;
-    uint32_t hidden : 1;
-};
-
 struct _lv_curve_t {
     lv_obj_t obj;
-    lv_curve_series_t* series;
-    uint32_t point_cnt;         /**< Number of points in all series */
+    int32_t * y_points;
+    uint32_t start_point;
+    uint32_t point_cnt;         //< Number of points
+    uint32_t full : 1;
+    uint32_t batch_size;
+    uint32_t batch_count;
 };
 
 
