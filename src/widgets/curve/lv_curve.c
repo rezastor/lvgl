@@ -585,31 +585,32 @@ static void invalidate_point(lv_obj_t * obj, uint32_t i)
     if(i >= curve->point_cnt) return;
 
     int32_t w  = lv_obj_get_content_width(obj);
-    int32_t scroll_left = lv_obj_get_scroll_left(obj);
     int32_t bwidth = lv_obj_get_style_border_width(obj, LV_PART_MAIN);
     int32_t pleft = lv_obj_get_style_pad_left(obj, LV_PART_MAIN);
-    int32_t x_ofs = obj->coords.x1 + pleft + bwidth - scroll_left;
+    int32_t x_ofs = obj->coords.x1 + pleft + bwidth;
+    int32_t x_step = w / (curve->point_cnt);
 
     int32_t line_width = lv_obj_get_style_line_width(obj, LV_PART_ITEMS);
-    int32_t point_w = lv_obj_get_style_width(obj, LV_PART_INDICATOR);
 
     lv_area_t coords;
     lv_area_copy(&coords, &obj->coords);
-    coords.y1 -= line_width + point_w;
-    coords.y2 += line_width + point_w;
+    coords.y1 -= line_width;
+    coords.y2 += line_width;
 
     /*Invalidate the area between the previous and the next points*/
-    if(i < curve->point_cnt - 1) {
-        coords.x1 = ((w * i) / (curve->point_cnt - 1)) + x_ofs - line_width - point_w;
-        coords.x2 = ((w * (i + 1)) / (curve->point_cnt - 1)) + x_ofs + line_width + point_w;
-        lv_obj_invalidate_area(obj, &coords);
+    if(i == curve->point_cnt - 1) {
+        coords.x1 = (i - 1) * x_step + x_ofs - line_width;
+        coords.x2 = i * x_step + x_ofs - line_width;
     }
-
-    if(i > 0) {
-        coords.x1 = ((w * (i - 1)) / (curve->point_cnt - 1)) + x_ofs - line_width - point_w;
-        coords.x2 = ((w * i) / (curve->point_cnt - 1)) + x_ofs + line_width + point_w;
-        lv_obj_invalidate_area(obj, &coords);
+    else if(i == 0){
+        coords.x1 = i * x_step + x_ofs - line_width;
+        coords.x2 = (i + 1) * x_step + x_ofs - line_width;
     }
+    else{
+        coords.x1 = (i - 1) * x_step + x_ofs - line_width;
+        coords.x2 = (i + 1) * x_step + x_ofs - line_width;
+    }
+    lv_obj_invalidate_area(obj, &coords);
 }
 
 static void new_points_alloc(lv_obj_t * obj, lv_curve_series_t * ser, uint32_t cnt, int32_t ** a)
