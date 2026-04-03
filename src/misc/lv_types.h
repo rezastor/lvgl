@@ -236,7 +236,9 @@ typedef struct _lv_line_t lv_line_t;
 
 typedef struct _lv_curve_t lv_curve_t;
 
-typedef struct _lv_curve_series_t lv_curve_series_t;
+typedef struct _lv_multicurve_t lv_multicurve_t;
+
+typedef struct _lv_multicurve_series_t lv_multicurve_series_t;
 
 typedef struct _lv_menu_load_page_event_data_t lv_menu_load_page_event_data_t;
 

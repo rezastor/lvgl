@@ -64,24 +64,7 @@ void lv_curve_set_point_count(lv_obj_t * obj, uint32_t cnt);
  */
 uint32_t lv_curve_get_point_count(const lv_obj_t * obj);
 
-/**
- * Get the current index of the x-axis start point in the data array
- * @param obj       pointer to a curve object
- * @param ser       pointer to a data series on 'curve'
- * @return          the index of the current x start point in the data array
- */
-uint32_t lv_curve_get_x_start_point(const lv_obj_t * obj, lv_curve_series_t * ser);
-
 void lv_curve_set_batch_count(lv_obj_t * obj, uint32_t cnt);
-
-/**
- * Get the position of a point to the curve.
- * @param obj       pointer to a curve object
- * @param ser       pointer to series
- * @param id        the index.
- * @param p_out     store the result position here
- */
-void lv_curve_get_point_pos_by_id(lv_obj_t * obj, lv_curve_series_t * ser, uint32_t id, lv_point_t * p_out);
 
 /**
  * Refresh a curve if its data line has changed
